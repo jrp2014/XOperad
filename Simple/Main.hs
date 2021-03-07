@@ -148,7 +148,7 @@ instance Show Player where
 
 type Board = Matrix (Maybe Player)
 
-instance {-# OVERLAPS #-} Show Board where
+instance {-# OVERLAPPING #-} Show Board where
     show = concat . fmap (\v -> ln v ++ "\n") . rows
       where
           ln  :: Show a => [Maybe a] -> String
@@ -251,7 +251,7 @@ data Score = Bad | Win | Lose | Good Int
 
 type Evaluation = (Score, MoveTree)
 
-instance {-# OVERLAPS #-} Show Evaluation where
+instance {-# OVERLAPPING #-} Show Evaluation where
     show (Bad, _) = "Bad\n"
     show (ev, mt) = show ev ++ ": " ++ show mt ++ "\n"
 

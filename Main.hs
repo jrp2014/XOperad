@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoStarIsType #-}
 
 import Control.Comonad
   ( Comonad (duplicate, extract),
@@ -49,7 +50,7 @@ import Numbers
     plusZ,
     toFin3,
     type (+),
-    type (:*),
+    type (*),
   )
 import Operad
   ( Operad (..),
@@ -87,7 +88,7 @@ instance Show Player where
 
 type Board = Matrix Three Three (Maybe Player)
 
-instance {-# OVERLAPS #-} Show Board where
+instance {-# OVERLAPPING #-} Show Board where
     show = concatMap (\v -> ln v ++ "\n") . rows
       where
           ln  :: Show a => Vec n (Maybe a) -> String
@@ -235,7 +236,7 @@ data Score = Bad | Win | Lose | Good Int
 
 type Evaluation = (Score, MoveTree One)
 
-instance {-# OVERLAPS #-} Show Evaluation where
+instance {-# OVERLAPPING #-} Show Evaluation where
     show (Bad, _) = "Bad\n"
     show (ev, mt) = show ev ++ ": " ++ show mt ++ "\n"
 
@@ -312,7 +313,7 @@ tryMove game move =
       _ -> (ev, game)
 
 
-tryAll :: MoveTree n -> Player -> MoveTree (n :* Nine)
+tryAll :: MoveTree n -> Player -> MoveTree (n * Nine)
 tryAll mt pl = compose mt $ replicateF (grade mt) (allMoves pl)
 
 makeMove :: TicTacToe -> (Score, TicTacToe, MoveTree One)

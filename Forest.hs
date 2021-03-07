@@ -4,10 +4,11 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE NoStarIsType #-}
 module Forest where
 
 import Numbers
-    ( SNat(..), type (:*), type (+), Nat(..), plus, plusAssoc )
+    ( SNat(..), type (*), type (+), Nat(..), plus, plusAssoc )
 import Data.Proxy ( Proxy(..) )
 import Data.Constraint ( Dict(Dict) )
 import Data.Kind (Type) -- or Data.Kind (Type)
@@ -34,7 +35,7 @@ inputs :: forall f n m. (forall k. f k -> SNat k) -> Forest f n m -> SNat n
 inputs _ Nil = SZ
 inputs g (Cons a as) = g a `plus` inputs g as
 
-replicateF :: SNat n -> f i -> Forest f (n :* i) n
+replicateF :: SNat n -> f i -> Forest f (n * i) n
 replicateF SZ _ = Nil
 replicateF (SS n) f = Cons f (replicateF n f)
 
