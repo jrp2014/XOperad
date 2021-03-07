@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -10,7 +11,6 @@
 
 import Control.Comonad
   ( Comonad (duplicate, extract),
-    Functor (fmap),
   )
 import Data.Bifunctor (bimap)
 import Data.Constraint (Dict (..))
@@ -19,9 +19,7 @@ import Data.Foldable
     concat,
   )
 import Data.Maybe
-  ( Maybe (..),
-    isJust,
-    maybe,
+  ( isJust,
   )
 import Data.Proxy (Proxy (..))
 import Forest
@@ -102,6 +100,7 @@ get x y = getM x y
 set :: Player -> Fin Three -> Fin Three -> Board -> Board
 set pl x y = setM (Just pl) x y
 
+-- NB: unused
 three :: SNat Three
 three = SS (SS (SS SZ))
 
@@ -133,7 +132,7 @@ data MoveTree n where
     Fan  :: Trees n    -> MoveTree n
 
 data Trees n where
-    NilT ::                                     Trees Z
+    NilT ::                                     Trees 'Z
     (:+) :: (Move, MoveTree k) -> Trees m    -> Trees (k + m)
 
 infixr 5 :+
@@ -149,8 +148,9 @@ instance Show (Trees n) where
 singleT :: Move -> MoveTree One
 singleT mv = Fan $ (mv, Leaf) :+ NilT
 
-headT :: MoveTree (S n) -> Maybe Move
-headT (Fan ((mv, t) :+ NilT)) = Just mv
+-- Unused
+headT :: MoveTree ('S n) -> Maybe Move
+headT (Fan ((mv, _t) :+ NilT)) = Just mv
 headT _ = Nothing
 
 tailT :: MoveTree n -> Maybe (MoveTree n)
@@ -179,13 +179,14 @@ lengthT (Fan ((mv, t) :+ NilT)) = 1 + lengthT t
 mapT :: (forall k. (Move, MoveTree k) -> (Move, MoveTree k)) -> MoveTree n -> MoveTree n
 mapT _ Leaf = Leaf
 mapT f (Fan ts) = Fan (mapTs f ts)
+
 mapTs :: (forall k. (Move, MoveTree k) -> (Move, MoveTree k)) -> Trees n -> Trees n
 mapTs _ NilT = NilT
 mapTs f (branch :+ ts) = f branch :+ mapTs f ts
 
 prependT :: forall n. Move -> MoveTree n -> MoveTree n
 prependT mv Leaf = singleT mv
-prependT mv ts@(Fan _) = case plusZ :: Dict (n ~ (n + Z)) of Dict -> Fan $ (mv, ts) :+ NilT
+prependT mv ts@(Fan _) = case plusZ :: Dict (n ~ (n + 'Z)) of Dict -> Fan $ (mv, ts) :+ NilT
 
 concatT :: Trees n -> Trees m -> Trees (n + m)
 concatT NilT ts = ts
@@ -205,9 +206,10 @@ allMoves pl = Fan $ threeMoves FinZ `concatT` threeMoves (FinS FinZ) `concatT` t
 instance Operad MoveTree where
     ident = Leaf
     -- compose :: MoveTree n -> Forest m n -> MoveTree m
+    compose :: MoveTree n -> Forest MoveTree m n -> MoveTree m
     compose Leaf (Cons Leaf Nil) = Leaf
     compose Leaf (Cons (t :: MoveTree m) Nil) = 
-        case plusZ :: Dict (m ~ (m + Z)) of Dict -> t
+        case plusZ :: Dict (m ~ (m + 'Z)) of Dict -> t
     -- | | | | | | j
     --    | | | |  k
     --     \/ \/   k
@@ -217,7 +219,6 @@ instance Operad MoveTree where
                      (Fan trees) = compose (Fan ts) mts2 -- Trees i2 <- (Trees m2 . Forest MoveTree i2 m2)
                  in (mv, tree) :+ trees
     compose (Fan NilT) Nil = Fan NilT
-    compose _ _ = error "compose!"
 
 instance Graded MoveTree where
     grade Leaf = SS SZ
@@ -241,6 +242,7 @@ instance Show Evaluation where
 
 type TicTacToe = W MoveTree Evaluation
 
+-- NB: This is never used
 data Status = Valid | Winning | Losing | Invalid
 
 ----------
@@ -271,6 +273,7 @@ evalBranch board (mv@(Move pl x y), t) =
                     isLosing = anyV (\(s, _) -> s == Lose) evals
                     adj = if isLosing then -100 else sval
                 in bimap (adjustScore adj) (prependT mv) <$> evals
+             Bad  -> error "evalBtanch: Got a bad score."
   where
       adjustScore adj (Good sc) = Good (sc + adj)
       adjustScore _ sc = sc
@@ -371,6 +374,9 @@ play board game = do
               Good _ -> do
                   print board'
                   respond board' game'
+              Win -> do
+                  putStrLn "I win!"
+                  print board'
 
 respond :: Board -> TicTacToe -> IO ()
 respond board game = do
