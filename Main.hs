@@ -7,7 +7,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverlappingInstances #-} -- for show
 
 import Control.Comonad
   ( Comonad (duplicate, extract),
@@ -88,7 +87,7 @@ instance Show Player where
 
 type Board = Matrix Three Three (Maybe Player)
 
-instance Show Board where
+instance {-# OVERLAPS #-} Show Board where
     show = concatMap (\v -> ln v ++ "\n") . rows
       where
           ln  :: Show a => Vec n (Maybe a) -> String
@@ -236,7 +235,7 @@ data Score = Bad | Win | Lose | Good Int
 
 type Evaluation = (Score, MoveTree One)
 
-instance Show Evaluation where
+instance {-# OVERLAPS #-} Show Evaluation where
     show (Bad, _) = "Bad\n"
     show (ev, mt) = show ev ++ ": " ++ show mt ++ "\n"
 

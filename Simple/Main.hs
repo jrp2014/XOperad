@@ -1,4 +1,3 @@
-{-# LANGUAGE OverlappingInstances #-} -- for show
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
@@ -149,7 +148,7 @@ instance Show Player where
 
 type Board = Matrix (Maybe Player)
 
-instance Show Board where
+instance {-# OVERLAPS #-} Show Board where
     show = concat . fmap (\v -> ln v ++ "\n") . rows
       where
           ln  :: Show a => [Maybe a] -> String
@@ -252,7 +251,7 @@ data Score = Bad | Win | Lose | Good Int
 
 type Evaluation = (Score, MoveTree)
 
-instance Show Evaluation where
+instance {-# OVERLAPS #-} Show Evaluation where
     show (Bad, _) = "Bad\n"
     show (ev, mt) = show ev ++ ": " ++ show mt ++ "\n"
 
