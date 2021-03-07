@@ -6,13 +6,13 @@
 {-# LANGUAGE GADTs #-}
 module Operad where
 
-import Numbers
-import Vector
-import Forest
+import Numbers ( SNat(..), type (+), Nat(..), plusZ, succAssoc )
+import Vector ( Vec(..), middleV )
+import Forest ( Graded(..), Forest(..), inputs, splitForest )
 
-import Control.Comonad
-import Data.Constraint
-
+import Control.Comonad ( Comonad(extract, duplicate) )
+import Data.Constraint ( Dict(..) )
+import Data.Kind ( Type )
 ---------
 -- Operad
 ---------
@@ -22,14 +22,14 @@ import Data.Constraint
 --   \ /
 --    |    f n
 
-class (Graded f) => Operad (f :: Nat -> *) where
-  ident :: f (S Z)
+class (Graded f) => Operad (f :: Nat -> Type) where
+  ident :: f ('S 'Z)
   compose :: f n -> Forest f m n -> f m
 
 -- Free Operad
 
-data Free (f :: Nat -> *) n where
-    Ident :: Free f (S Z)
+data Free (f :: Nat -> Type) n where
+    Ident :: Free f ('S 'Z)
     Apply :: f n -> Forest (Free f) i n -> Free f i
 
 instance (Graded f) => Graded (Free f) where
@@ -39,7 +39,7 @@ instance (Graded f) => Graded (Free f) where
 instance (Graded f) => Operad (Free f) where
     ident = Ident
     -- compose :: Free f n -> Forest (Free f) m n -> Free f m
-    compose Ident (Cons (x :: Free f n) Nil) = case plusZ :: Dict (n ~ (n + Z)) of Dict -> x
+    compose Ident (Cons (x :: Free f n) Nil) = case plusZ :: Dict (n ~ (n + 'Z)) of Dict -> x
     -- | | | | n
     --   | | k          xs
     --   \ / k
@@ -69,7 +69,7 @@ idents SZ = Nil
 idents (SS n) = ident `Cons` idents n
 
 -- Create a forest: idents k ++ f n ++ idents m
-plantTreeAt :: Operad f => SNat k -> SNat m -> f n -> Forest f (k + (n + m)) (k + S m)
+plantTreeAt :: Operad f => SNat k -> SNat m -> f n -> Forest f (k + (n + m)) (k + 'S m)
 -- f `Cons` idents m :: Forest (n + m) (S m)
 plantTreeAt k m f = prependIdents k (f `Cons` idents m)
   where

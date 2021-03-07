@@ -9,9 +9,9 @@
 
 module Numbers where
     
-import Data.Proxy
-import Data.Constraint
-import Unsafe.Coerce
+import Data.Proxy ( Proxy(..) )
+import Data.Constraint ( Dict(..) )
+import Unsafe.Coerce ( unsafeCoerce )
 
 -- Peano numbers
 data Nat = Z | S Nat
@@ -19,18 +19,18 @@ data Nat = Z | S Nat
 
 -- Addition of Nats lifted to types (Here, Nat is a kind)
 type family (+) (a :: Nat) (b :: Nat) :: Nat
-type instance Z   + m = m
-type instance S n + m = S (n + m)
+type instance 'Z   + m = m
+type instance 'S n + m = 'S (n + m)
 
 type family (:*) (a :: Nat) (b :: Nat) :: Nat
-type instance Z :* m = Z
-type instance (S n) :* m = m + (n :* m)
+type instance 'Z :* m = 'Z
+type instance ('S n) :* m = m + (n :* m)
 
 
 -- Singleton type parameterized by Nat. Useful for recursion
 data SNat n where
-  SZ :: SNat Z
-  SS :: SNat n -> SNat (S n)
+  SZ :: SNat 'Z
+  SS :: SNat n -> SNat ('S n)
 
 -- Arithmetic on singletons
 plus :: SNat n -> SNat m -> SNat (n + m)
@@ -43,26 +43,26 @@ class KnownNat (n :: Nat) where
   natSing :: SNat n
 
 -- Converting lifted Nats to Singetons
-instance KnownNat Z where
+instance KnownNat 'Z where
   natSing = SZ
 
-instance KnownNat n => KnownNat (S n) where
+instance KnownNat n => KnownNat ('S n) where
   natSing = SS natSing
 
-type One   = S Z
-type Two   = S (S Z)
-type Three = S (S (S Z))
-type Four  = S (S (S (S Z)))
-type Five  = S (S (S (S (S Z))))
-type Six   = S (S (S (S (S (S Z)))))
-type Seven = S (S (S (S (S (S (S Z))))))
-type Eight = S (S (S (S (S (S (S (S Z)))))))
-type Nine  = S (S (S (S (S (S (S (S (S Z))))))))
+type One   = 'S 'Z
+type Two   = 'S ('S 'Z)
+type Three = 'S ('S ('S 'Z))
+type Four  = 'S ('S ('S ('S 'Z)))
+type Five  = 'S ('S ('S ('S ('S 'Z))))
+type Six   = 'S ('S ('S ('S ('S ('S 'Z)))))
+type Seven = 'S ('S ('S ('S ('S ('S ('S 'Z))))))
+type Eight = 'S ('S ('S ('S ('S ('S ('S ('S 'Z)))))))
+type Nine  = 'S ('S ('S ('S ('S ('S ('S ('S ('S 'Z))))))))
 
 -- Numbers smaller than n
 data Fin n where
-    FinZ :: Fin (S n) -- zero is less than any successor
-    FinS :: Fin n -> Fin (S n) -- n is less than (n+1)
+    FinZ :: Fin ('S n) -- zero is less than any successor
+    FinS :: Fin n -> Fin ('S n) -- n is less than (n+1)
 
 instance Eq (Fin n) where
     FinZ == FinZ = True
@@ -84,23 +84,23 @@ toFin3 _ = Nothing
 
 -- Axioms
 
-plusZ :: forall n. Dict (n ~ (n + Z))
+plusZ :: forall n. Dict (n ~ (n + 'Z))
 plusZ = unsafeCoerce (Dict :: Dict (n ~ n))
 
 plusAssoc :: p a -> q b -> r c -> Dict (((a + b) + c) ~ (a + (b + c)))
 plusAssoc _ _ _ = unsafeCoerce (Dict :: Dict (a ~ a))
 
-succAssoc :: p a -> q b -> Dict ((a + S b) ~ S (a + b))
+succAssoc :: p a -> q b -> Dict ((a + 'S b) ~ 'S (a + b))
 succAssoc _ _ = unsafeCoerce (Dict :: Dict (a ~ a))
 
-multDistrib :: p a -> q b -> Dict (S (a :* b) ~ (b + (a :* b)))
+multDistrib :: p a -> q b -> Dict ('S (a :* b) ~ (b + (a :* b)))
 multDistrib _ _ = unsafeCoerce (Dict :: Dict (a ~ a))
 
 -- Convert regular Int to type
 -- Can't simply do: exists n. Int -> Proxy n 
 -- Existential trick: Use CPS
 reifyNat :: Int -> (forall n. KnownNat n => Proxy n -> r) -> r
-reifyNat 0 k = k (Proxy :: Proxy Z)
-reifyNat n k = reifyNat (n - 1) $ \(Proxy :: Proxy n_1) -> k (Proxy :: Proxy (S n_1))
+reifyNat 0 k = k (Proxy :: Proxy 'Z)
+reifyNat n k = reifyNat (n - 1) $ \(Proxy :: Proxy n_1) -> k (Proxy :: Proxy ('S n_1))
 
 

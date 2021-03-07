@@ -1,27 +1,78 @@
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverlappingInstances #-} -- for show
 
-import Numbers
-import Vector
-import Matrix
-import Forest
-import Operad
-
-import Data.Maybe
 import Control.Comonad
-import Data.Constraint
-import Data.Proxy
+  ( Comonad (duplicate, extract),
+    Functor (fmap),
+  )
+import Data.Bifunctor (bimap)
+import Data.Constraint (Dict (..))
 import Data.Foldable
-import Prelude hiding (concat, sum, foldr)
+  ( Foldable (toList),
+    concat,
+  )
+import Data.Maybe
+  ( Maybe (..),
+    isJust,
+    maybe,
+  )
+import Data.Proxy (Proxy (..))
+import Forest
+  ( Forest (Cons, Nil),
+    Graded (..),
+    replicateF,
+    splitForest,
+  )
+import Matrix
+  ( Matrix (Matrix),
+    getCol,
+    getDiagL,
+    getDiagR,
+    getM,
+    getRow,
+    rows,
+    setM,
+  )
+import Numbers
+  ( Fin (..),
+    Nat (S, Z),
+    Nine,
+    One,
+    SNat (..),
+    Three,
+    plus,
+    plusAssoc,
+    plusZ,
+    toFin3,
+    type (+),
+    type (:*),
+  )
+import Operad
+  ( Operad (..),
+    W (..),
+  )
+import Vector
+  ( Vec (..),
+    allV,
+    anyV,
+    concatV,
+    headV,
+    replicateV,
+    singleV,
+  )
+import Prelude hiding
+  ( concat,
+    foldr,
+    sum,
+  )
+
 --import Debug.Trace
 
 -- Tic Tac Toe
@@ -40,7 +91,7 @@ instance Show Player where
 type Board = Matrix Three Three (Maybe Player)
 
 instance Show Board where
-    show = concat . fmap (\v -> ln v ++ "\n") . rows
+    show = concatMap (\v -> ln v ++ "\n") . rows
       where
           ln  :: Show a => Vec n (Maybe a) -> String
           ln v = (concat . toList . fmap (\x -> maybe " - " show x ++ " ")) v
@@ -98,7 +149,7 @@ instance Show (Trees n) where
 singleT :: Move -> MoveTree One
 singleT mv = Fan $ (mv, Leaf) :+ NilT
 
-headT :: MoveTree (S n) -> Maybe (Move)
+headT :: MoveTree (S n) -> Maybe Move
 headT (Fan ((mv, t) :+ NilT)) = Just mv
 headT _ = Nothing
 
@@ -140,7 +191,7 @@ concatT :: Trees n -> Trees m -> Trees (n + m)
 concatT NilT ts = ts
 -- (k + m) + n = k + (m + n)
 concatT ((mv, a :: MoveTree k) :+ (as :: Trees m)) (ts :: Trees n) = 
-  case plusAssoc (Proxy :: Proxy k) (Proxy :: Proxy m) (Proxy :: Proxy n) of Dict -> (mv, a) :+ (concatT as ts)
+  case plusAssoc (Proxy :: Proxy k) (Proxy :: Proxy m) (Proxy :: Proxy n) of Dict -> (mv, a) :+ concatT as ts
 
 allMoves :: Player -> MoveTree Nine
 allMoves pl = Fan $ threeMoves FinZ `concatT` threeMoves (FinS FinZ) `concatT` threeMoves (FinS (FinS FinZ))
@@ -162,8 +213,8 @@ instance Operad MoveTree where
     --     \/ \/   k
     compose (Fan ((mv, t) :+ ts)) frt = Fan $ splitForest (grade t) (grade ts) frt $
               \(mts1, mts2) ->                 -- (Forest MoveTree i1 m1, Forest MoveTree i2 m2)
-                 let tree  = (compose t mts1)  -- MoveTree i1
-                     (Fan trees) = (compose (Fan ts) mts2) -- Trees i2 <- (Trees m2 . Forest MoveTree i2 m2)
+                 let tree  = compose t mts1  -- MoveTree i1
+                     (Fan trees) = compose (Fan ts) mts2 -- Trees i2 <- (Trees m2 . Forest MoveTree i2 m2)
                  in (mv, tree) :+ trees
     compose (Fan NilT) Nil = Fan NilT
     compose _ _ = error "compose!"
@@ -219,7 +270,7 @@ evalBranch board (mv@(Move pl x y), t) =
                 let evals = eval board' t
                     isLosing = anyV (\(s, _) -> s == Lose) evals
                     adj = if isLosing then -100 else sval
-                in fmap (\(s, mvs) -> (adjustScore adj s, prependT mv mvs)) $ evals
+                in bimap (adjustScore adj) (prependT mv) <$> evals
   where
       adjustScore adj (Good sc) = Good (sc + adj)
       adjustScore _ sc = sc
@@ -235,12 +286,12 @@ evalValidMove board (Move pl x y) =
     winRow = allV isMine $ getRow y board
     winCol = allV isMine $ getCol x board
     winDiag = winDiagL || winDiagR
-    winDiagL = x == y && (allV isMine $ getDiagL board)
-    winDiagR = isRDiag && (allV isMine $ getDiagR board)
+    winDiagL = x == y && allV isMine (getDiagL board)
+    winDiagR = isRDiag && allV isMine (getDiagR board)
     isRDiag = x == (FinS FinZ) && y == FinS FinZ ||
               x == (FinS (FinS FinZ)) && y == FinZ ||
               y == (FinS (FinS FinZ)) && x == FinZ
-    isMine = maybe False (== pl)
+    isMine = (Just pl ==)
 
 evalTs :: (forall k. (Move, MoveTree k) -> Vec k Evaluation) -> Trees n -> Vec n Evaluation
 evalTs _ NilT = VNil
@@ -295,9 +346,9 @@ bestMove (VCons ev evals) = go ev evals
 -- get a user move, validate it, make a move
 play :: Board -> TicTacToe -> IO ()
 play board game = do
-    putStrLn $ show $ board
+    print board
     ln <- getLine
-    let (coords :: [Int]) = (fmap (\x -> x - 1) . fmap read . words) ln
+    let (coords :: [Int]) = (fmap (pred . read) . words) ln
         pos = do
                 x <- safeHead coords >>= toFin3
                 y <- safeTail coords >>= safeHead >>= toFin3
@@ -313,12 +364,12 @@ play board game = do
             in case status of
               Lose -> do
                   putStrLn "You win!"
-                  putStrLn $ show $ board'
+                  print board'
               Bad -> do
                   putStrLn "Invalid move! Try again."
                   play board game'
               Good _ -> do
-                  putStrLn $ show $ board'
+                  print board'
                   respond board' game'
 
 respond :: Board -> TicTacToe -> IO ()
@@ -331,7 +382,7 @@ respond board game = do
         play board' game'
       Win -> do
         putStrLn "You lose!"
-        putStrLn $ show $ board'
+        print board'
       _ -> putStrLn "A tie!"
 
 

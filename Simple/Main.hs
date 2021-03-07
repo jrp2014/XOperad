@@ -1,14 +1,15 @@
 {-# LANGUAGE OverlappingInstances #-} -- for show
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
+import Data.Bifunctor ( bimap )
 import Data.Foldable
-import Data.Traversable
-import Data.Monoid
-import Data.Maybe
+    ( Foldable(toList), all, any, concat )
+import Data.Monoid ( Sum(Sum, getSum) )
+import Data.Maybe ( isJust )
 import Control.Comonad
+    ( Comonad(extract, duplicate) )
 import Prelude hiding (concat, sum, foldr, any, all)
 
 -- Vector
@@ -81,14 +82,14 @@ getDiagL (Matrix vv) = diag vv
   where
     diag :: [[a]] -> [a]
     diag [[a]] = [a]
-    diag ((a : _) : vs) = a : (diag $ fmap tail vs)
+    diag ((a : _) : vs) = a : diag (fmap tail vs)
 
 getDiagR :: Matrix a -> [a]
 getDiagR (Matrix vv) = antidiag vv
   where
     antidiag :: [[a]] -> [a]
     antidiag [[a]] = [a]
-    antidiag (v : vs) = (last v) : (antidiag $ fmap init vs)
+    antidiag (v : vs) = last v : antidiag (fmap init vs)
 
 -- Forest
 
@@ -161,7 +162,7 @@ set :: Player -> Int -> Int -> Board -> Board
 set pl x y = setM (Just pl) x y
 
 emptyBoard :: Board
-emptyBoard = Matrix $ replicate 3 $ replicate 3 $ Nothing
+emptyBoard = Matrix $ replicate 3 $ replicate 3 Nothing
 
 scoreBoard :: Matrix Int
 scoreBoard = Matrix [[1, 0, 1], [0, 2, 0], [1, 0, 1]]
@@ -180,9 +181,9 @@ instance Show MoveTree where
     show (Fan ts) = show ts
 
 singleT :: Move -> MoveTree
-singleT mv = Fan $ [(mv, Leaf)]
+singleT mv = Fan [(mv, Leaf)]
 
-headT :: MoveTree -> Maybe (Move)
+headT :: MoveTree -> Maybe Move
 headT (Fan [(mv, t)]) = Just mv
 headT _ = Nothing
 
@@ -191,7 +192,7 @@ tailT (Fan [(_, Leaf)]) = Just Leaf
 tailT (Fan [(_, t)]) = do
     mv <- getMove t
     tl <- tailT t
-    return $ Fan $ [(mv, tl)]
+    return $ Fan [(mv, tl)]
 tailT _ = Nothing
 
 getMove :: MoveTree -> Maybe Move
@@ -235,7 +236,7 @@ instance Operad MoveTree where
     --     \/ \/   k
     compose (Fan ((mv, t) : ts)) frt =
         let (mts1, mts2) = splitForest (grade t) frt
-            tree  = (compose t mts1)
+            tree  = compose t mts1
             (Fan trees) = compose (Fan ts) mts2
         in Fan $ (mv, tree) : trees
 
@@ -277,7 +278,7 @@ evalBranch board (mv@(Move pl x y), t) =
                 let evals = eval board' t
                     isLosing = any (\(s, _) -> s == Lose) evals
                     adj = if isLosing then -100 else sval
-                in fmap (\(s, mvs) -> (adjustScore adj s, prependT mv mvs)) $ evals
+                in fmap (bimap (adjustScore adj) (prependT mv)) evals 
   where
       adjustScore adj (Good sc) = Good (sc + adj)
       adjustScore _ sc = sc
@@ -293,12 +294,12 @@ evalValidMove board (Move pl x y) =
     winRow = all isMine $ getRow y board
     winCol = all isMine $ getCol x board
     winDiag = winDiagL || winDiagR
-    winDiagL = x == y && (all isMine $ getDiagL board)
-    winDiagR = isRDiag && (all isMine $ getDiagR board)
+    winDiagL = x == y && all isMine (getDiagL board)
+    winDiagR = isRDiag && all isMine (getDiagR board)
     isRDiag = x == 1 && y == 1 ||
               x == 2 && y == 0 ||
               y == 2 && x == 0
-    isMine = maybe False (== pl)
+    isMine = (Just pl ==)
 
 evalTs :: ((Move, MoveTree) -> [Evaluation]) -> [(Move, MoveTree)] -> [Evaluation]
 evalTs _ [] = []
@@ -353,9 +354,9 @@ bestMove (ev : evals) = go ev evals
 -- get a user move, validate it, make a move
 play :: Board -> TicTacToe -> IO ()
 play board game = do
-    putStrLn $ show $ board
+    print board
     ln <- getLine
-    let coords :: [Int] = (fmap (\x -> x - 1) . fmap read . words) ln
+    let coords :: [Int] = (fmap ((\x -> x - 1) . read) . words) ln
         pos = do
                 x <- safeHead coords >>= toFin3
                 y <- safeTail coords >>= safeHead >>= toFin3
@@ -371,12 +372,12 @@ play board game = do
             in case status of
               Lose -> do
                   putStrLn "You win!"
-                  putStrLn $ show $ board'
+                  print board'
               Bad -> do
                   putStrLn "Invalid move! Try again."
                   play board game'
               Good _ -> do
-                  putStrLn $ show $ board'
+                  print board'
                   respond board' game'
 
 toFin3 :: Int -> Maybe Int
@@ -392,7 +393,7 @@ respond board game = do
         play board' game'
       Win -> do
         putStrLn "You lose!"
-        putStrLn $ show $ board'
+        print board'
       _ -> putStrLn "A tie!"
 
 

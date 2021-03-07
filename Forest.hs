@@ -7,8 +7,10 @@
 module Forest where
 
 import Numbers
-import Data.Proxy
-import Data.Constraint
+    ( SNat(..), type (:*), type (+), Nat(..), plus, plusAssoc )
+import Data.Proxy ( Proxy(..) )
+import Data.Constraint ( Dict(Dict) )
+import Data.Kind (Type) -- or Data.Kind (Type)
 
 -- f n : a tree with n branches (inputs)
 -- Forest f i o : a forest of o trees with total i branches
@@ -18,14 +20,14 @@ import Data.Constraint
 --   |     | |         | | |
 --          n          1 + n
 data Forest f n m where
-  Nil  :: Forest f Z Z 
-  Cons :: f i1 -> Forest f i2 n -> Forest f (i1 + i2) (S n)
+  Nil  :: Forest f 'Z 'Z 
+  Cons :: f i1 -> Forest f i2 n -> Forest f (i1 + i2) ('S n)
 
 instance Show (Forest f n m) where
     show Nil = "."
     show (Cons _ fs) = "V" ++ ", " ++ show fs
 
-class Graded (f :: Nat -> *) where
+class Graded (f :: Nat -> Type) where
   grade :: f n -> SNat n
 
 inputs :: forall f n m. (forall k. f k -> SNat k) -> Forest f n m -> SNat n

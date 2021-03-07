@@ -9,7 +9,7 @@ category:            game
 build-type:          Simple
 extra-source-files:  README.md
 
-tested-with:     GHC ==8.10.4
+tested-with:     GHC == 8.10.4, GHC == 9.0.1
 
 common common-options
   build-depends:    base >=4.7 && < 5

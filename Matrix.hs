@@ -1,11 +1,11 @@
 {-# LANGUAGE GADTs #-}
 module Matrix where
 
-import Numbers
+import Numbers ( Fin, KnownNat )
 import Vector
+    ( Vec(..), singleV, lastV, tailV, initV, ixV, atV, transpose )
 
-import Data.Foldable
-import Data.Traversable
+import Data.Foldable ( Foldable(toList), concat )
 import Prelude hiding (concat, sum, foldr)
 -----------------
 -- Matrix

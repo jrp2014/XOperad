@@ -4,15 +4,14 @@
 module Vector where
 
 import Numbers
-import Control.Applicative
-import Data.Traversable
-import Data.Foldable
+    ( Fin(..), One, KnownNat(..), SNat(..), type (+), Nat(S, Z), plus )
 import Data.Monoid
+    ( Any(Any, getAny), All(All, getAll) )
 import Prelude hiding (concat, sum)
 
 data Vec n a where
-    VCons :: a -> Vec n a -> Vec (S n) a
-    VNil :: Vec Z a
+    VCons :: a -> Vec n a -> Vec ('S n) a
+    VNil :: Vec 'Z a
 
 instance (Show a) => Show (Vec n a) where
     show VNil = "VNil"
@@ -38,17 +37,17 @@ zipWithV f (VCons a as) (VCons b bs) = VCons (f a b) (zipWithV f as bs)
 zipWithV _ VNil VNil = VNil
 zipWithV _ _ _ = undefined -- can't happen
 
-headV :: Vec (S n) a -> a
+headV :: Vec ('S n) a -> a
 headV (VCons a _) = a
 
-lastV :: Vec (S n) a -> a
+lastV :: Vec ('S n) a -> a
 lastV (VCons a VNil) = a
 lastV (VCons _ as@(VCons _ _)) = lastV as
 
-tailV :: Vec (S n) a -> Vec n a
+tailV :: Vec ('S n) a -> Vec n a
 tailV (VCons _ as) = as
 
-initV :: Vec (S n) a -> Vec n a
+initV :: Vec ('S n) a -> Vec n a
 initV (VCons a (VCons _ VNil)) = VCons a VNil
 initV (VCons a as@(VCons _ _)) = VCons a (initV as)
 initV (VCons _ VNil) = undefined -- must not happen!
@@ -72,7 +71,7 @@ middleV :: SNat n -> SNat m -> SNat k -> Vec (n + (m + k)) a -> Vec m a
 middleV n m k v = mid
   where (_, mid, _) = split3V n m k v
 
-nthV :: SNat n -> SNat (S m) -> Vec (n + S m) a -> a
+nthV :: SNat n -> SNat ('S m) -> Vec (n + 'S m) a -> a
 nthV n m v = headV v2
   where
       (_, v2) = splitV n m v
