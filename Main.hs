@@ -259,7 +259,7 @@ tryMove game move =
       _ -> (ev, game)
 
 
-tryAll :: MoveTree n -> Player -> MoveTree (n * Nine)
+tryAll :: MoveTree n -> Player -> MoveTree (n :* Nine)
 tryAll mt pl = compose mt $ replicateF (grade mt) (allMoves pl)
 
 makeMove :: TicTacToe -> (Score, TicTacToe, MoveTree One)

@@ -32,7 +32,7 @@ inputs :: forall f n m. (forall k. f k -> SNat k) -> Forest f n m -> SNat n
 inputs _ Nil = SZ
 inputs g (Cons a as) = g a `plus` inputs g as
 
-replicateF :: SNat n -> f i -> Forest f (n * i) n
+replicateF :: SNat n -> f i -> Forest f (n :* i) n
 replicateF SZ _ = Nil
 replicateF (SS n) f = Cons f (replicateF n f)
 

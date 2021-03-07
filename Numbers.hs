@@ -22,9 +22,9 @@ type family (+) (a :: Nat) (b :: Nat) :: Nat
 type instance Z   + m = m
 type instance S n + m = S (n + m)
 
-type family (*) (a :: Nat) (b :: Nat) :: Nat
-type instance Z * m = Z
-type instance (S n) * m = m + (n * m)
+type family (:*) (a :: Nat) (b :: Nat) :: Nat
+type instance Z :* m = Z
+type instance (S n) :* m = m + (n :* m)
 
 
 -- Singleton type parameterized by Nat. Useful for recursion
