@@ -22,9 +22,9 @@ type family (+) (a :: Nat) (b :: Nat) :: Nat
 type instance Z   + m = m
 type instance S n + m = S (n + m)
 
-type family (*) (a :: Nat) (b :: Nat) :: Nat
-type instance Z * m = Z
-type instance (S n) * m = m + (n * m)
+type family (:*) (a :: Nat) (b :: Nat) :: Nat
+type instance Z :* m = Z
+type instance (S n) :* m = m + (n :* m)
 
 
 -- Singleton type parameterized by Nat. Useful for recursion
@@ -93,7 +93,7 @@ plusAssoc _ _ _ = unsafeCoerce (Dict :: Dict (a ~ a))
 succAssoc :: p a -> q b -> Dict ((a + S b) ~ S (a + b))
 succAssoc _ _ = unsafeCoerce (Dict :: Dict (a ~ a))
 
-multDistrib :: p a -> q b -> Dict (S (a * b) ~ (b + (a * b)))
+multDistrib :: p a -> q b -> Dict (S (a :* b) ~ (b + (a :* b)))
 multDistrib _ _ = unsafeCoerce (Dict :: Dict (a ~ a))
 
 -- Convert regular Int to type
